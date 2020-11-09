@@ -2,19 +2,10 @@ package main
 
 import (
 	"github.com/astaxie/beego"
+	_ "github.com/sathishkumar-manogaran/vendor-management-service/routers"
 )
-
-type MainController struct {
-	beego.Controller
-}
-
-func (this *MainController) Get() {
-
-	this.Ctx.WriteString("hello world")
-}
 
 func main() {
 
-	beego.Router("/", &MainController{})
 	beego.Run()
 }
