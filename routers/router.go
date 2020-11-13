@@ -6,6 +6,6 @@ import (
 )
 
 func init() {
-	beego.Router("/", &controllers.VendorController{}, "get:Status")
-	beego.Router("/vendor", &controllers.VendorController{}, "get:GetVendors")
+	beego.Router("/", &controllers.AppController{}, "get:Status")
+	beego.Router("/booking", &controllers.BookingController{}, "post:GetBookingVendorDetails")
 }

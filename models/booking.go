@@ -1,5 +1,14 @@
 package models
 
+type Booking struct {
+	Source          `json:"Source"`
+	ExportCustoms   `json:"ExportCustoms"`
+	SourcePort      `json:"SourcePort"`
+	DestinationPort `json:"DestinationPort"`
+	ImportCustoms   `json:"ImportCustoms"`
+	Destination     `json:"Destination"`
+}
+
 type Source struct {
 	Address `json:"Address"`
 	City    `json:"City"`
