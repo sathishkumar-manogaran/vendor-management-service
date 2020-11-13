@@ -15,7 +15,7 @@ const (
 	username = "root"
 	password = "root"
 	hostname = "127.0.0.1:3306"
-	dbname   = "order-management"
+	dbname   = "order_management"
 )
 
 func dsn(dbName string) string {
