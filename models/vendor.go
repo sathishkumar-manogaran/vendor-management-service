@@ -1,7 +1,11 @@
 package models
 
-type Vendor struct {
-	id      string `ID`
-	name    string `Name`
-	service string `Service`
+type Service struct {
+	Name    `json:"name"`
+	Country `json:"country"`
+}
+
+type Vendors struct {
+	Name     `json:"Name"`
+	Services []Service `json:"Services"`
 }
