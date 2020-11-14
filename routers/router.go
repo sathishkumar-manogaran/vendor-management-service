@@ -23,9 +23,11 @@ func createDatabaseConnection() {
 	}
 	defer db.Close()
 	log.Printf("Successfully connected to database")
+	err = database.CreateMasterCountryTable(db)
+	err = database.CreateMasterServiceTable(db)
 	err = database.CreateVendorTable(db)
 	if err != nil {
-		log.Printf("Create product table failed with error %s", err)
+		log.Printf("Create table failed with error %s", err)
 		return
 	}
 }

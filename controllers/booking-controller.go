@@ -26,19 +26,21 @@ func (bookingController *BookingController) GetBookingVendorDetails() {
 
 	err := json.Unmarshal(bookingController.Ctx.Input.RequestBody, &booking)
 	if err != nil {
-		bookingController.Ctx.Output.ContentType("applciation/json")
+		bookingController.Ctx.Output.ContentType("application/json")
 		bookingController.Ctx.Output.SetStatus(400)
 		spew.Dump("******** ERROR ********", err)
 		spew.Dump("******** Request Payload ********", bookingController.Ctx.Input.RequestBody)
 		bookingController.Ctx.Output.Body([]byte("Error Occurred while processing request"))
 	}
 
+	//var vendors interface{}
 	if validErrs, vendors := services.GetBookingVendorDetails(&booking); len(validErrs) > 0 {
 		err := map[string]interface{}{"validationError": validErrs}
-		bookingController.Ctx.Output.ContentType("applciation/json")
+		bookingController.Ctx.Output.ContentType("application/json")
 		bookingController.Ctx.Output.SetStatus(400)
 		bookingController.Ctx.Output.IsForbidden()
 		bookingController.Ctx.Output.JSON(err, true, true)
+	} else {
 		fmt.Println(vendors)
 		bookingController.Data["json"] = vendors
 		bookingController.ServeJSON()
