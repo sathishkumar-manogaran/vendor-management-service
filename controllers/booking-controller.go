@@ -7,7 +7,15 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/sathishkumar-manogaran/vendor-management-service/models"
 	"github.com/sathishkumar-manogaran/vendor-management-service/services"
+	"gopkg.in/go-playground/validator.v9"
 )
+
+var validate *validator.Validate
+
+//func init() {
+//	validate = validator.New()
+//	validate.RegisterValidation("json", isJSON)
+//}
 
 type BookingController struct {
 	beego.Controller
@@ -18,15 +26,27 @@ func (bookingController *BookingController) GetBookingVendorDetails() {
 
 	err := json.Unmarshal(bookingController.Ctx.Input.RequestBody, &booking)
 	if err != nil {
+		bookingController.Ctx.Output.ContentType("applciation/json")
 		bookingController.Ctx.Output.SetStatus(400)
 		spew.Dump("******** ERROR ********", err)
 		spew.Dump("******** Request Payload ********", bookingController.Ctx.Input.RequestBody)
 		bookingController.Ctx.Output.Body([]byte("Error Occurred while processing request"))
 	}
 
-	vendors := services.GetBookingVendorDetails(&booking)
-	fmt.Println(vendors)
+	if validErrs, vendors := services.GetBookingVendorDetails(&booking); len(validErrs) > 0 {
+		err := map[string]interface{}{"validationError": validErrs}
+		bookingController.Ctx.Output.ContentType("applciation/json")
+		bookingController.Ctx.Output.SetStatus(400)
+		bookingController.Ctx.Output.IsForbidden()
+		bookingController.Ctx.Output.JSON(err, true, true)
+		fmt.Println(vendors)
+		bookingController.Data["json"] = vendors
+		bookingController.ServeJSON()
+	}
 
-	bookingController.Data["json"] = vendors
-	bookingController.ServeJSON()
+	//vendors := services.GetBookingVendorDetails(&booking)
+	//fmt.Println(vendors)
+
+	//bookingController.Data["json"] = vendors
+	//bookingController.ServeJSON()
 }
