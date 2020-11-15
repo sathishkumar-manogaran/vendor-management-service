@@ -16,6 +16,7 @@ const DoorToPort = "DoorToPort"
 const PortToPort = "PortToPort"
 const PortToDoor = "PortToDoor"
 const OceanFreight = "Ocean Freight"
+const AirFreight = "Air Freight"
 
 func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	typeOfBusinessIdentifier(booking)
@@ -23,8 +24,10 @@ func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	switch typeOfBusiness {
 	case DoorToDoor:
 		validation = doorToDoorValidation(booking)
+		vendors = getDoorToDoorServices(booking)
 	case DoorToPort:
 		validation = doorToPortValidation(booking)
+		vendors = getDoorToPortServices(booking)
 	case PortToPort:
 		validation = portToPortValidation(booking)
 		vendor := getPortToPortServices(booking)
@@ -182,42 +185,109 @@ func getPortToPortServices(booking *Booking) (vendor Vendor) {
 func getPortToDoorServices(booking *Booking) (vendors Vendors) {
 	db, _ := database.DbConnection()
 	var importCustomsVendor, transportationVendor Vendor
+	var importCustomsService, transportationService Service
 	freightVendor := getPortToPortServices(booking)
-
-	// Get Export Customs
+	//vendors = Vendors{Vendors: []Vendor{freightVendor}}
+	// Get Import Customs
 	importCustomsVendorName := getVendorNameByService(db, booking.ImportCustoms.Country, "Customs")
-	importCustomsService := Service{
+	importCustomsService = Service{
 		Name:    "Customs",
 		Country: booking.ImportCustoms.Country,
 	}
 
 	// Get Transportation
 	transportationVendorName := getVendorNameByService(db, booking.DestinationPort.Country, "Transportation")
-	transportationService := Service{
+	transportationService = Service{
 		Name:    "Transportation",
 		Country: booking.DestinationPort.Country,
 	}
 
 	// Combine Import Customs Vendor and Transportation Vendor
 	if importCustomsVendorName == transportationVendorName {
-		services := []Service{importCustomsService, transportationService}
+		servicesList := []Service{importCustomsService, transportationService}
 		importCustomsVendor = Vendor{
 			Name:     importCustomsVendorName,
-			Services: services,
+			Services: servicesList,
 		}
+		vendors = Vendors{Vendors: []Vendor{freightVendor, importCustomsVendor}}
 	} else {
-		services1 := []Service{importCustomsService}
+		importCustomServices := []Service{importCustomsService}
 		importCustomsVendor = Vendor{
 			Name:     importCustomsVendorName,
-			Services: services1,
+			Services: importCustomServices,
 		}
-		services3 := []Service{transportationService}
+		transportationServices := []Service{transportationService}
 		transportationVendor = Vendor{
 			Name:     transportationVendorName,
-			Services: services3,
+			Services: transportationServices,
+		}
+		vendors = Vendors{Vendors: []Vendor{freightVendor, importCustomsVendor, transportationVendor}}
+	}
+
+	return vendors
+}
+func getDoorToPortServices(booking *Booking) (vendors Vendors) {
+	db, _ := database.DbConnection()
+	var exportCustomsVendor, transportationVendor Vendor
+	var exportCustomsService, transportationService Service
+	freightVendor := getPortToPortServices(booking)
+
+	// Get Export Customs
+	exportCustomsVendorName := getVendorNameByService(db, booking.ExportCustoms.Country, "Customs")
+	exportCustomsService = Service{
+		Name:    "Customs",
+		Country: booking.ExportCustoms.Country,
+	}
+
+	// Get Transportation
+	transportationVendorName := getVendorNameByService(db, booking.SourcePort.Country, "Transportation")
+	transportationService = Service{
+		Name:    "Transportation",
+		Country: booking.SourcePort.Country,
+	}
+
+	// Combine Export Customs Vendor and Transportation Vendor
+	if exportCustomsVendorName == transportationVendorName {
+		servicesList := []Service{exportCustomsService, transportationService}
+		exportCustomsVendor = Vendor{
+			Name:     exportCustomsVendorName,
+			Services: servicesList,
+		}
+		vendors = Vendors{Vendors: []Vendor{freightVendor, exportCustomsVendor}}
+	} else {
+		importCustomServices := []Service{exportCustomsService}
+		exportCustomsVendor = Vendor{
+			Name:     exportCustomsVendorName,
+			Services: importCustomServices,
+		}
+		transportationServices := []Service{transportationService}
+		transportationVendor = Vendor{
+			Name:     transportationVendorName,
+			Services: transportationServices,
+		}
+		vendors = Vendors{Vendors: []Vendor{freightVendor, exportCustomsVendor, transportationVendor}}
+	}
+
+	return vendors
+}
+func getDoorToDoorServices(booking *Booking) (vendors Vendors) {
+	doorToPortVendor := getDoorToPortServices(booking)
+	portToDoorVendor := getPortToDoorServices(booking)
+	freightVendor := getPortToPortServices(booking)
+
+	// Combining all the services based on Vendor Name
+	var finalVendor Vendor
+	for _, vendor := range doorToPortVendor.Vendors {
+		vendorName := vendor.Name
+		for _, vendor2 := range portToDoorVendor.Vendors {
+			if vendorName == vendor2.Name {
+				vendor2.Services = append(vendor2.Services, vendor.Services...)
+				finalVendor.Name = vendorName
+				finalVendor.Services = vendor2.Services
+			}
 		}
 	}
-	vendors = Vendors{Vendors: []Vendor{freightVendor, importCustomsVendor, transportationVendor}}
+	vendors = Vendors{Vendors: []Vendor{freightVendor, finalVendor}}
 	return vendors
 }
 
