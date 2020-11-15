@@ -4,8 +4,15 @@ import (
 	"fmt"
 	. "github.com/sathishkumar-manogaran/vendor-management-service/models"
 	"net/url"
-	"reflect"
 )
+
+var typeOfBusiness string
+var validation url.Values
+
+const DoorToDoor = "DoorToDoor"
+const DoorToPort = "DoorToPort"
+const PortToPort = "PortToPort"
+const PortToDoor = "PortToDoor"
 
 func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	// TODO
@@ -26,9 +33,22 @@ func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	//	fmt.Printf("Booking %s\n", booking)
 	//}
 
-	//typeOfBusinessIdentifier(booking)
+	typeOfBusinessIdentifier(booking)
 
-	validation := bookingRequestBasicValidation(booking)
+	switch typeOfBusiness {
+	case DoorToDoor:
+		validation = bookingRequestDoorToDoorValidation(booking)
+	case DoorToPort:
+		validation = bookingRequestDoorToPortValidation(booking)
+	case PortToPort:
+		validation = bookingRequestPortToPortValidation(booking)
+	case PortToDoor:
+		validation = bookingRequestPortToDoorValidation(booking)
+	default:
+		fmt.Println("No error occurred while validating")
+	}
+
+	// based on type of business and country look for services
 
 	s1 := Service{
 		Name:    "Ocean freight",
@@ -85,14 +105,61 @@ func typeOfBusinessIdentifier(booking *Booking) {
 	// if source not present then 3,4
 	// if destination not present then 2,3
 
-	if reflect.DeepEqual(booking.Source, Source{}) {
-		fmt.Println("Source Present")
+	//if reflect.DeepEqual(booking.Source, Source{}) {
+	//	fmt.Println("Source Present")
+	//} else {
+	//	fmt.Println("Source Not Present")
+	//}
+
+	if booking.Source.Address == "" {
+		if booking.ImportCustoms.Country == "" {
+			typeOfBusiness = PortToPort
+		} else {
+			typeOfBusiness = PortToDoor
+		}
+
+	} else if booking.ImportCustoms.Country == "" {
+		typeOfBusiness = DoorToPort
 	} else {
-		fmt.Println("Source Not Present")
+		typeOfBusiness = DoorToDoor
 	}
+	fmt.Println(typeOfBusiness)
 }
 
-func bookingRequestBasicValidation(booking *Booking) url.Values {
+func bookingRequestDoorToDoorValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	errs = sourceValidation(booking)
+	errs = exportCustomsValidation(booking)
+	errs = sourcePortValidation(booking)
+	errs = destinationPortValidation(booking)
+	errs = importCustomsValidation(booking)
+	errs = destinationValidation(booking)
+	return errs
+}
+func bookingRequestDoorToPortValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	errs = sourceValidation(booking)
+	errs = exportCustomsValidation(booking)
+	errs = sourcePortValidation(booking)
+	errs = destinationPortValidation(booking)
+	return errs
+}
+func bookingRequestPortToPortValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	errs = sourcePortValidation(booking)
+	errs = destinationPortValidation(booking)
+	return errs
+}
+func bookingRequestPortToDoorValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	errs = sourcePortValidation(booking)
+	errs = destinationPortValidation(booking)
+	errs = importCustomsValidation(booking)
+	errs = destinationValidation(booking)
+	return errs
+}
+
+func sourceValidation(booking *Booking) url.Values {
 	errs := url.Values{}
 	// Source: Address Validation
 	if booking.Source.Address == "" {
@@ -109,6 +176,67 @@ func bookingRequestBasicValidation(booking *Booking) url.Values {
 	return errs
 }
 
-//func (x Person) IsStructureEmpty() bool {
-//	return reflect.DeepEqual(x, Person{})
-//}
+func exportCustomsValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	// ExportCustoms: Country Validation
+	if booking.ExportCustoms.Country == "" {
+		errs.Add("Country", "The ExportCustoms Country field is required!")
+	}
+
+	return errs
+}
+
+func sourcePortValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	// SourcePort: Address Validation
+	if booking.SourcePort.City == "" {
+		errs.Add("City", "The SourcePort City field is required!")
+	}
+
+	if booking.SourcePort.Country == "" {
+		errs.Add("Country", "The SourcePort Country field is required!")
+	}
+
+	return errs
+}
+
+func destinationPortValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	// DestinationPort: City Validation
+	if booking.DestinationPort.City == "" {
+		errs.Add("City", "The DestinationPort City field is required!")
+	}
+	// DestinationPort: Country Validation
+	if booking.DestinationPort.Country == "" {
+		errs.Add("Country", "The DestinationPort Country field is required!")
+	}
+
+	return errs
+}
+
+func importCustomsValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	// ImportCustoms: Country Validation
+	if booking.ImportCustoms.Country == "" {
+		errs.Add("Country", "The ImportCustoms Country field is required!")
+	}
+
+	return errs
+}
+
+func destinationValidation(booking *Booking) url.Values {
+	errs := url.Values{}
+	// Destination: Address Validation
+	if booking.Destination.Address == "" {
+		errs.Add("Address", "The Destination Address field is required!")
+	}
+	if booking.Destination.City == "" {
+		errs.Add("City", "The Destination City field is required!")
+	}
+
+	if booking.Destination.Country == "" {
+		errs.Add("Country", "The Destination Country field is required!")
+	}
+
+	return errs
+}
