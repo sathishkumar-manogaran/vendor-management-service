@@ -10,6 +10,7 @@ import (
 
 var typeOfBusiness string
 var validation url.Values
+var validationFlag bool
 
 const DoorToDoor = "DoorToDoor"
 const DoorToPort = "DoorToPort"
@@ -20,22 +21,35 @@ const AirFreight = "Air Freight"
 
 func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	typeOfBusinessIdentifier(booking)
+
 	vendors := Vendors{}
 	switch typeOfBusiness {
+
 	case DoorToDoor:
-		validation = doorToDoorValidation(booking)
-		vendors = getDoorToDoorServices(booking)
+		validation, validationFlag = doorToDoorValidation(booking)
+		if !validationFlag {
+			vendors = getDoorToDoorServices(booking)
+		}
+
 	case DoorToPort:
-		validation = doorToPortValidation(booking)
-		vendors = getDoorToPortServices(booking)
+		validation, validationFlag = doorToPortValidation(booking)
+		if !validationFlag {
+			vendors = getDoorToPortServices(booking)
+		}
+
 	case PortToPort:
-		validation = portToPortValidation(booking)
-		vendor := getPortToPortServices(booking)
-		vendorPortToPort := []Vendor{vendor}
-		vendors = Vendors{Vendors: vendorPortToPort}
+		validation, validationFlag = portToPortValidation(booking)
+		if !validationFlag {
+			vendor := getPortToPortServices(booking)
+			vendorPortToPort := []Vendor{vendor}
+			vendors = Vendors{Vendors: vendorPortToPort}
+		}
 	case PortToDoor:
-		validation = portToDoorValidation(booking)
-		vendors = getPortToDoorServices(booking)
+		validation, validationFlag = portToDoorValidation(booking)
+		if !validationFlag {
+			vendors = getPortToDoorServices(booking)
+		}
+
 	default:
 		fmt.Println("No error occurred while validating")
 	}
@@ -57,41 +71,50 @@ func typeOfBusinessIdentifier(booking *Booking) {
 	fmt.Println(typeOfBusiness)
 }
 
-func doorToDoorValidation(booking *Booking) url.Values {
-	errs := url.Values{}
-	errs = sourceValidation(booking)
-	errs = exportCustomsValidation(booking)
-	errs = sourcePortValidation(booking)
-	errs = destinationPortValidation(booking)
-	errs = importCustomsValidation(booking)
-	errs = destinationValidation(booking)
-	return errs
+func doorToDoorValidation(booking *Booking) (errs url.Values, validationFlag bool) {
+	errs = url.Values{}
+	errs = sourceValidation(booking, errs)
+	errs = exportCustomsValidation(booking, errs)
+	errs = sourcePortValidation(booking, errs)
+	errs = destinationPortValidation(booking, errs)
+	errs = importCustomsValidation(booking, errs)
+	errs = destinationValidation(booking, errs)
+	return errs, validationFlag
+
 }
-func doorToPortValidation(booking *Booking) url.Values {
-	errs := url.Values{}
-	errs = sourceValidation(booking)
-	errs = exportCustomsValidation(booking)
-	errs = sourcePortValidation(booking)
-	errs = destinationPortValidation(booking)
-	return errs
+func doorToPortValidation(booking *Booking) (errs url.Values, validationFlag bool) {
+	errs = url.Values{}
+	errs = sourceValidation(booking, errs)
+	errs = exportCustomsValidation(booking, errs)
+	errs = sourcePortValidation(booking, errs)
+	errs = destinationPortValidation(booking, errs)
+	if len(errs) > 0 {
+		validationFlag = true
+	}
+	return errs, validationFlag
 }
-func portToPortValidation(booking *Booking) url.Values {
-	errs := url.Values{}
-	errs = sourcePortValidation(booking)
-	errs = destinationPortValidation(booking)
-	return errs
+func portToPortValidation(booking *Booking) (errs url.Values, validationFlag bool) {
+	errs = url.Values{}
+	errs = sourcePortValidation(booking, errs)
+	errs = destinationPortValidation(booking, errs)
+	if len(errs) > 0 {
+		validationFlag = true
+	}
+	return errs, validationFlag
 }
-func portToDoorValidation(booking *Booking) url.Values {
-	errs := url.Values{}
-	errs = sourcePortValidation(booking)
-	errs = destinationPortValidation(booking)
-	errs = importCustomsValidation(booking)
-	errs = destinationValidation(booking)
-	return errs
+func portToDoorValidation(booking *Booking) (errs url.Values, validationFlag bool) {
+	errs = url.Values{}
+	errs = sourcePortValidation(booking, errs)
+	errs = destinationPortValidation(booking, errs)
+	errs = importCustomsValidation(booking, errs)
+	errs = destinationValidation(booking, errs)
+	if len(errs) > 0 {
+		validationFlag = true
+	}
+	return errs, validationFlag
 }
 
-func sourceValidation(booking *Booking) url.Values {
-	errs := url.Values{}
+func sourceValidation(booking *Booking, errs url.Values) url.Values {
 	// Source: Address Validation
 	if booking.Source.Address == "" {
 		errs.Add("Address", "The Source Address field is required!")
@@ -105,8 +128,7 @@ func sourceValidation(booking *Booking) url.Values {
 	return errs
 }
 
-func exportCustomsValidation(booking *Booking) url.Values {
-	errs := url.Values{}
+func exportCustomsValidation(booking *Booking, errs url.Values) url.Values {
 	// ExportCustoms: Country Validation
 	if booking.ExportCustoms.Country == "" {
 		errs.Add("Country", "The ExportCustoms Country field is required!")
@@ -114,8 +136,7 @@ func exportCustomsValidation(booking *Booking) url.Values {
 	return errs
 }
 
-func sourcePortValidation(booking *Booking) url.Values {
-	errs := url.Values{}
+func sourcePortValidation(booking *Booking, errs url.Values) url.Values {
 	// SourcePort: Address Validation
 	if booking.SourcePort.City == "" {
 		errs.Add("City", "The SourcePort City field is required!")
@@ -126,8 +147,7 @@ func sourcePortValidation(booking *Booking) url.Values {
 	return errs
 }
 
-func destinationPortValidation(booking *Booking) url.Values {
-	errs := url.Values{}
+func destinationPortValidation(booking *Booking, errs url.Values) url.Values {
 	// DestinationPort: City Validation
 	if booking.DestinationPort.City == "" {
 		errs.Add("City", "The DestinationPort City field is required!")
@@ -139,8 +159,7 @@ func destinationPortValidation(booking *Booking) url.Values {
 	return errs
 }
 
-func importCustomsValidation(booking *Booking) url.Values {
-	errs := url.Values{}
+func importCustomsValidation(booking *Booking, errs url.Values) url.Values {
 	// ImportCustoms: Country Validation
 	if booking.ImportCustoms.Country == "" {
 		errs.Add("Country", "The ImportCustoms Country field is required!")
@@ -148,8 +167,7 @@ func importCustomsValidation(booking *Booking) url.Values {
 	return errs
 }
 
-func destinationValidation(booking *Booking) url.Values {
-	errs := url.Values{}
+func destinationValidation(booking *Booking, errs url.Values) url.Values {
 	// Destination: Address Validation
 	if booking.Destination.Address == "" {
 		errs.Add("Address", "The Destination Address field is required!")

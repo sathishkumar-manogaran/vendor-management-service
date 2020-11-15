@@ -9,6 +9,6 @@ import (
 
 func main() {
 
-	// Starting the MVC portion
+	// Starting the Vendor Management Service portion
 	beego.Run()
 }
