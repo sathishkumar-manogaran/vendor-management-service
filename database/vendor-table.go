@@ -101,7 +101,9 @@ func GetVendorByService(db *sql.DB, country Country, service Name) (vendor Name)
 
 func GetFreightVendorByService(db *sql.DB, sourceCountry Country, destinationCountry Country, service Name) (vendor Name) {
 	var sourceCountryVendor Name
-	rows, err := db.Query("select v.vendor_name from vendor v left join service s on s.id = v.service_id left join country c on c.id = s.country_id where c.name = ? and s.name = ?", sourceCountry, service)
+	rows, err := db.Query("select v.vendor_name from vendor v "+
+		"left join service s on s.id = v.service_id "+
+		"left join country c on c.id = s.country_id where c.name = ? and s.name = ?", sourceCountry, service)
 	defer rows.Close()
 	for rows.Next() {
 		err = rows.Scan(&sourceCountryVendor)
@@ -110,7 +112,11 @@ func GetFreightVendorByService(db *sql.DB, sourceCountry Country, destinationCou
 			db.Close()
 		}
 		fmt.Println(sourceCountryVendor)
-		row := db.QueryRow("select v.vendor_name from vendor v left join service s on s.id = v.service_id left join country c on c.id = s.country_id where c.name = ? and s.name = ? and v.vendor_name = ?", destinationCountry, service, sourceCountryVendor)
+		row := db.QueryRow("select v.vendor_name from vendor v "+
+			"left join service s on s.id = v.service_id "+
+			"left join country c on c.id = s.country_id "+
+			"where c.name = ? and s.name = ? and v.vendor_name = ?",
+			destinationCountry, service, sourceCountryVendor)
 		switch err := row.Scan(&vendor); err {
 		case sql.ErrNoRows:
 			fmt.Println("No rows were returned!")
