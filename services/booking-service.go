@@ -1,7 +1,9 @@
 package services
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/sathishkumar-manogaran/vendor-management-service/database"
 	. "github.com/sathishkumar-manogaran/vendor-management-service/models"
 	"net/url"
 )
@@ -29,53 +31,57 @@ func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	//	(3 table required. 1. Vendor Name 2. Vendor Country (master table) 3. Vendor Services (master table))
 	// 7. Type of booking Table Creation
 
-	//if len(booking.Destination.Address) > 0 {
-	//	fmt.Printf("Booking %s\n", booking)
-	//}
-
 	typeOfBusinessIdentifier(booking)
-
+	vendors := Vendors{}
+	// based on type of business and country look for services
+	// if it is PortToPort, then need to look for customs in source and destination port and Ocean freight or Air freight
+	// if it is PortToDoor, then need to look for customs in source and destination port and destination transportation and Ocean freight or Air freight
+	// if it is DoorToPort, then need to look for Source Transportation customs in source and destination port and Ocean freight or Air freight
+	// if it is DoorToDoor, then need to look for Source and destination Transportation customs in source and destination port and Ocean freight or Air freight
 	switch typeOfBusiness {
 	case DoorToDoor:
-		validation = bookingRequestDoorToDoorValidation(booking)
+		validation = doorToDoorValidation(booking)
 	case DoorToPort:
-		validation = bookingRequestDoorToPortValidation(booking)
+		validation = doorToPortValidation(booking)
 	case PortToPort:
-		validation = bookingRequestPortToPortValidation(booking)
+		validation = portToPortValidation(booking)
+		// customs and Ocean freight or Air freight
+		//importCountry := booking.ImportCustoms.Country
+		//exportCountry := booking.ExportCustoms.Country
+		// for this country 1st find out customs and transportation
+		vendors = getPortToPortServices(booking)
 	case PortToDoor:
-		validation = bookingRequestPortToDoorValidation(booking)
+		validation = portToDoorValidation(booking)
 	default:
 		fmt.Println("No error occurred while validating")
 	}
 
-	// based on type of business and country look for services
-
-	s1 := Service{
-		Name:    "Ocean freight",
-		Country: "India - Singapore",
-	}
-	s2 := Service{
-		Name:    "Customs",
-		Country: "Singapore",
-	}
-	s3 := Service{
-		Name:    "Transportation",
-		Country: "India",
-	}
-
-	ser1 := []Service{s1, s2}
-	ser2 := []Service{s3}
-
-	v := Vendor{
-		Name:     "V1",
-		Services: ser1,
-	}
-	v1 := Vendor{
-		Name:     "V2",
-		Services: ser2,
-	}
-
-	ve := []Vendor{v, v1}
+	//s1 := Service{
+	//	Name:    "Ocean freight",
+	//	Country: "India - Singapore",
+	//}
+	//s2 := Service{
+	//	Name:    "Customs",
+	//	Country: "Singapore",
+	//}
+	//s3 := Service{
+	//	Name:    "Transportation",
+	//	Country: "India",
+	//}
+	//
+	//ser1 := []Service{s1, s2}
+	//ser2 := []Service{s3}
+	//
+	//v := Vendor{
+	//	Name:     "V1",
+	//	Services: ser1,
+	//}
+	//v1 := Vendor{
+	//	Name:     "V2",
+	//	Services: ser2,
+	//}
+	//
+	//ve := []Vendor{v, v1}
 
 	//return validation, Vendors{Vendors: []Vendor{{
 	//	Name: "V1",
@@ -84,33 +90,10 @@ func GetBookingVendorDetails(booking *Booking) (url.Values, Vendors) {
 	//		Country: "India - Singapore",
 	//	}},
 	//}}}
-	return validation, Vendors{Vendors: ve}
+	return validation, vendors
 }
 
 func typeOfBusinessIdentifier(booking *Booking) {
-	//1. Door to door - Will have all fields.
-	//2. Door to port - Will have fields 1 to 4.
-	//3. Port to port - Will have only fields 3 and 4.
-	//4. Port to door - Will have fields 3 to 6.
-
-	// if we dont have 5 (ImportCustoms) then it will go to 2,3
-	// if we don't have 1 (Source) then it will go to 3
-	// else 2
-	// if we dont have 1 (Source) then it will go to 3,4 and check for 5 (ImportCustoms)
-	// if 5 (ImportCustoms) present then it wil go to 4
-	// else 3
-	//
-
-	// Check Source and Destination first
-	// if source not present then 3,4
-	// if destination not present then 2,3
-
-	//if reflect.DeepEqual(booking.Source, Source{}) {
-	//	fmt.Println("Source Present")
-	//} else {
-	//	fmt.Println("Source Not Present")
-	//}
-
 	if booking.Source.Address == "" {
 		if booking.ImportCustoms.Country == "" {
 			typeOfBusiness = PortToPort
@@ -126,7 +109,7 @@ func typeOfBusinessIdentifier(booking *Booking) {
 	fmt.Println(typeOfBusiness)
 }
 
-func bookingRequestDoorToDoorValidation(booking *Booking) url.Values {
+func doorToDoorValidation(booking *Booking) url.Values {
 	errs := url.Values{}
 	errs = sourceValidation(booking)
 	errs = exportCustomsValidation(booking)
@@ -136,7 +119,7 @@ func bookingRequestDoorToDoorValidation(booking *Booking) url.Values {
 	errs = destinationValidation(booking)
 	return errs
 }
-func bookingRequestDoorToPortValidation(booking *Booking) url.Values {
+func doorToPortValidation(booking *Booking) url.Values {
 	errs := url.Values{}
 	errs = sourceValidation(booking)
 	errs = exportCustomsValidation(booking)
@@ -144,13 +127,13 @@ func bookingRequestDoorToPortValidation(booking *Booking) url.Values {
 	errs = destinationPortValidation(booking)
 	return errs
 }
-func bookingRequestPortToPortValidation(booking *Booking) url.Values {
+func portToPortValidation(booking *Booking) url.Values {
 	errs := url.Values{}
 	errs = sourcePortValidation(booking)
 	errs = destinationPortValidation(booking)
 	return errs
 }
-func bookingRequestPortToDoorValidation(booking *Booking) url.Values {
+func portToDoorValidation(booking *Booking) url.Values {
 	errs := url.Values{}
 	errs = sourcePortValidation(booking)
 	errs = destinationPortValidation(booking)
@@ -168,11 +151,9 @@ func sourceValidation(booking *Booking) url.Values {
 	if booking.Source.City == "" {
 		errs.Add("City", "The Source City field is required!")
 	}
-
 	if booking.Source.Country == "" {
 		errs.Add("Country", "The Source Country field is required!")
 	}
-
 	return errs
 }
 
@@ -182,7 +163,6 @@ func exportCustomsValidation(booking *Booking) url.Values {
 	if booking.ExportCustoms.Country == "" {
 		errs.Add("Country", "The ExportCustoms Country field is required!")
 	}
-
 	return errs
 }
 
@@ -192,11 +172,9 @@ func sourcePortValidation(booking *Booking) url.Values {
 	if booking.SourcePort.City == "" {
 		errs.Add("City", "The SourcePort City field is required!")
 	}
-
 	if booking.SourcePort.Country == "" {
 		errs.Add("Country", "The SourcePort Country field is required!")
 	}
-
 	return errs
 }
 
@@ -210,7 +188,6 @@ func destinationPortValidation(booking *Booking) url.Values {
 	if booking.DestinationPort.Country == "" {
 		errs.Add("Country", "The DestinationPort Country field is required!")
 	}
-
 	return errs
 }
 
@@ -220,7 +197,6 @@ func importCustomsValidation(booking *Booking) url.Values {
 	if booking.ImportCustoms.Country == "" {
 		errs.Add("Country", "The ImportCustoms Country field is required!")
 	}
-
 	return errs
 }
 
@@ -233,10 +209,54 @@ func destinationValidation(booking *Booking) url.Values {
 	if booking.Destination.City == "" {
 		errs.Add("City", "The Destination City field is required!")
 	}
-
 	if booking.Destination.Country == "" {
 		errs.Add("Country", "The Destination Country field is required!")
 	}
-
 	return errs
+}
+
+func getPortToPortServices(booking *Booking) (vendors Vendors) {
+	db, _ := database.DbConnection()
+	//// Get Import Customs
+	//importCustomsVendor := getCustoms(db, booking.SourcePort.Country)
+	//
+	//service1 := Service{
+	//	Name:    "Customs",
+	//	Country: booking.SourcePort.Country,
+	//}
+	//
+	//// Get Export Customs
+	//exportCustomsVendor := getCustoms(db, booking.DestinationPort.Country)
+	//service2 := Service{
+	//	Name:    "Customs",
+	//	Country: booking.DestinationPort.Country,
+	//}
+
+	// Get Freight
+	freightVendor := getFreight(db, booking.SourcePort.Country, booking.DestinationPort.Country)
+	service3 := Service{
+		Name:    "Ocean freight",
+		Country: booking.SourcePort.Country + " - " + booking.DestinationPort.Country,
+	}
+
+	ser2 := []Service{service3}
+
+	v1 := Vendor{
+		Name:     freightVendor,
+		Services: ser2,
+	}
+
+	ve := []Vendor{v1}
+	vendors = Vendors{Vendors: ve}
+	return vendors
+}
+
+func getCustoms(db *sql.DB, country Country) (vendor Name) {
+	vendor = database.GetVendorByService(db, country, "Customs")
+	return vendor
+}
+
+func getFreight(db *sql.DB, sourceCountry Country, destinationCountry Country) (vendor Name) {
+	vendor = database.GetVendorByService(db, sourceCountry, "Ocean Freight")
+	return vendor
 }
