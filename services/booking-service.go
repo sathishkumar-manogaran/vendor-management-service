@@ -205,7 +205,7 @@ func getPortToDoorServices(booking *Booking) (vendors Vendors) {
 	var importCustomsVendor, transportationVendor Vendor
 	var importCustomsService, transportationService Service
 	freightVendor := getPortToPortServices(booking)
-	//vendors = Vendors{Vendors: []Vendor{freightVendor}}
+
 	// Get Import Customs
 	importCustomsVendorName := getVendorNameByService(db, booking.ImportCustoms.Country, "Customs")
 	importCustomsService = Service{
